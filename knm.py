@@ -95,7 +95,7 @@ def start():
         #             f2.write(data)
         #         f2.close()
         #         exit(1)
-    	else:
+        else:
     		print('Missing pca file for pca')
             exit(1)
 
