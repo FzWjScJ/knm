@@ -96,7 +96,7 @@ def start():
         #         f2.close()
         #         exit(1)
         else:
-    		print('Missing pca file for pca')
+            print('Missing pca file for pca')
             exit(1)
 
             if 'mouse' in sys.argv or 'm' in sys.argv:
