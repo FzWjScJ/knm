@@ -44,7 +44,7 @@ def start():
         print("Wrong cmd")
         exit(1)
     if '-v' in sys.argv:
-        print('version:'+VERSION)
+        print('version:'+str(VERSION))
         exit(1)
     if 'pca' in sys.argv or 'p' in sys.argv:
         if 'pca' in sys.argv:
