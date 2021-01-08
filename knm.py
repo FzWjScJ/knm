@@ -55,8 +55,7 @@ def start() -> int:
         print('version:'+str(VERSION))
         print('Thanks to the auther DizzyK && FzWjScj')
         print('''
-            If U find any problem, please take Ur issue into Github \
-                https://github.com/Dizzy-K/knm OR https://github.com/FzWjScJ/knm''')
+            If U find any problem, please take Ur issue into Github \nhttps://github.com/Dizzy-K/knm OR https://github.com/FzWjScJ/knm''')
         return 0
     elif 'pca' == sys.argv[1] or 'p' == sys.argv[1]:
         return analyse_pca(cmd=cmd)
