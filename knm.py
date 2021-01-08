@@ -257,7 +257,7 @@ def draw_mouse(filename="outmouse"):
                     ax3.set_title('Right')
     print('Saving...')              
     plot.savefig('./'+filename+'.png')
-    print('Picture have save as '+filename+a+'.png')
+    print('Picture have save as '+filename+str(a)+'.png')
     print('Done!')    
     plot.show()
 
