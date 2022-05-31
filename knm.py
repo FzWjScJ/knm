@@ -1,6 +1,9 @@
+from email.policy import default
 import sys,os
-import matplotlib.pyplot as plot
+import click
+from sqlalchemy import null, over
 from tqdm import tqdm
+import matplotlib.pyplot as plot
 
 normalKeys = {
         "04":"a", "05":"b", "06":"c", "07":"d", "08":"e",
@@ -36,75 +39,84 @@ shiftKeys = {
         "50":"<LeftArrow>", "51":"<DownArrow>", "52": "<UpArrow>", "53":"<NumLock>", "54":"/", 
         "55":"*", "56":"-", "57":"+", "58":"<RET>", "59":"1", "5a":"2", "5b":"3", "5c":"4", "5d":"5", 
         "5e":"6", "5f":"7", "60":"8", "61":"9", "62":"0"}
-VERSION = 1.1
+VERSION = 2.0
 
-#获取指令
-def start() -> int:
-    if '-h' in sys.argv or '--help' in sys.argv or len(sys.argv) < 2:
-        print('''
-        usage:python(3) knm.py <cmd> [arg] [opts]
-        cmds:
-            pca <pcadile> (<outfile>)           转换pca的USB流量为data(文件)
-            keyboard <datafile> (<outfile>)     识别提取出的data(文件)并还原data(文件)为键盘输入内容
-            mouse <datafile> (<outfile>)        识别提取出的data(文件)并还原data(文件)为坐标并绘图
-            -v          version                 读取版本号及作者信息
-        ''')
-        return 0
-    cmd = sys.argv[1]
-    if '-v' == sys.argv[1]:
-        print('version:'+str(VERSION))
-        print('Thanks to the auther DizzyK && FzWjScj')
-        print('''
-            If U find any problem, please take Ur issue into Github \n
-            https://github.com/Dizzy-K/knm OR https://github.com/FzWjScJ/knm''')
-        return 0
-    elif 'pca' == sys.argv[1] or 'p' == sys.argv[1]:
-        return analyse_pca(cmd=cmd)
-    elif 'mouse' == sys.argv[1] or 'm' == sys.argv[1]:
-        return analyse_mouse(cmd=cmd)
-    elif 'keyboard' in sys.argv or 'k' in sys.argv:
-        return analyse_keyboard(cmd=cmd)
-    else:
-        return 1 #cmd wrong
+@click.group()
+@click.version_option(version=VERSION)
+def main():
+    """主要功能：\n
+    1.addr 快速查看usb流量所有地址\n
+    2.pca pcap转为data文件\n
+    3.keyboard data转为keyboard文件\n
+    4.mouse data转为mouse文件\n"""
+    pass
 
-# 提取usb流量信息
-def analyse_pca(cmd) -> int:
-    if 'pca' == sys.argv[1]:
-        p = sys.argv.index('pca')
-    elif 'p' == sys.argv[1]:
-        p = sys.argv.index('p')
-    if len(sys.argv) <= p+1:
-        return 1 # cmd wrong
-    if 'pcap' not in sys.argv[p+1]:
-        return 4 # input wrong
-    pca = str(sys.argv[p+1])
-    if len(sys.argv) == p+2:
-        sys.argv.append('outpca.txt')
-        os.popen('tshark -r ' + pca + ' -T fields -e usb.capdata | sed \'/^\s*$/d\'> ' + sys.argv[p+2])
-        return 3 # output wrong
-    if len(sys.argv) == p+3:
-        os.popen('tshark -r ' + pca + ' -T fields -e usb.capdata | sed \'/^\s*$/d\'> ' + sys.argv[p+2])
-        print('done!')
-        exit(1)
-    else:
-        print('Unknown Wrong, please take it into issue!')
-        return 1 # other wrong
 
-# 键盘流量分析
-def analyse_keyboard(cmd) -> int:
-    if 'keyboard' in sys.argv:
-        p = sys.argv.index('keyboard')
-    elif 'k' in sys.argv:
-        p = sys.argv.index('k')
-    if len(sys.argv) < p + 2:
-        print('Missing file for keyboard')
-        return 2
-    elif len(sys.argv) == p + 2:
-        sys.argv.append('outkeyboard.txt')
-        print('Missing outputfile, it will named outkeyboard by default')
+#一把梭导出数据,把数据转换为data文件
+@click.command()
+@click.option('-inputfile','-i',type=str ,help='输入文件')
+@click.option('-output','-o',default="out.txt",type=str ,help='输出文件')
+
+
+#分类
+def pca(inputfile,output):
+    """Usage: python knm.py pca -i input.pcap -o output.data"""
+    print('选择接下来的操作')
+    print('1.直接转换为data文件')
+    print('2.过滤指定地址后选择data文件')
+    choice = input(">")
+    if choice == '1':
+        print('请选择数据类型(usb.capdata/usbhid.data)输入1/2')
+        c_type = input(">")
+        if c_type == '1':
+            os.popen('tshark -r ' + inputfile + ' -T fields -e usb.capdata | sed \'/^\s*$/d\'> ' + output)
+            click.echo("done！")
+        else:
+            os.popen('tshark -r ' + inputfile + ' -T fields -e usbhid.data | sed \'/^\s*$/d\'> ' + output)
+            click.echo("done！")
+
+    elif choice == '2':
+        print('请输入过滤地址,使用前建议使用addr查看所有地址\nUsage:2.10.1')
+        filter = input(">")
+        print('请选择数据类型(usb.capdata/usbhid.data)输入1/2')
+        c_type = input(">")
+        if c_type == '1':
+            exp = 'tshark -r ' + inputfile + ' -T fields -e usb.capdata -Y "usb.addr == \\"'+ filter +'\\""| sed \'/^\s*$/d\'> ' + output
+            os.popen(exp)
+            click.echo("done！")
+        else:
+            exp = 'tshark -r ' + inputfile + ' -T fields -e usbhid.data -Y "usb.addr == \\"'+ filter +'\\""| sed \'/^\s*$/d\'> ' + output
+            # os.popen('tshark -r ' + inputfile + ' -T fields -e usbhid.data -Y usb.addr == "'+ filter +'"| sed \'/^\s*$/d\'> ' + output)
+            os.popen(exp)
+            click.echo("done！")
+
+
+
+#快速分析目标USB地址
+@click.command()
+@click.option('--inputfile','-i',nargs=1,type=str,help='目标文件')
+@click.option('--pcatype','-t',type=click.Choice(['old', 'new']),help='USB流量版本选择(默认为old)')
+
+def addr(inputfile,pcatype):
+    """Usage: python knm.py addr -i input.pcap -t old/new"""
+    if not pcatype:
+        pcatype = 'old'
+    if pcatype == 'old':    
+        os.system('tshark -r ' + inputfile + ' -T fields -e usb.addr -Y usb.capdata | sort | uniq -c | sort -nr | head')
+        click.echo("done！")
+    elif pcatype == 'new':
+        os.system('tshark -r ' + inputfile + ' -T fields -e usb.addr -Y usbhid.data | sort | uniq -c | sort -nr | head')
+        click.echo('done!')
+
+#直接输出键盘流量
+
+@click.command()
+@click.option('--inputfile','-i',nargs=1,type=str,help='目标data文件')
+
+def keyboard(inputfile):
+    """Usage: python knm.py keyboard -i input.data"""
     output = []
-    f1 = open(sys.argv[p+1],'r').readlines()
-    f2 = open(sys.argv[p+2],'w')
+    f1 = open(inputfile,'r').readlines()
     f1_ = tqdm(f1)
     print("Taking keyboard data...")
     for line in f1_:
@@ -128,72 +140,84 @@ def analyse_keyboard(cmd) -> int:
                 output += ['[unknown]']
         except:
             pass
-    print("Done!\nClearing data...")
-    for i in tqdm(range(len(output))):
-        try:
-            a=output.index('<DEL>')
-            del output[a]
-            del output[a-1]
-        except:
-            pass
-        try:
-            a=output.index('<RET>')
-            del output[a]
-            output.append('\n')
-        except:
-            pass
-        try:
-            a=output.index('<SPACE>')
-            del output[a]
-            output.append(' ')
-        except:
-            pass
-        try:
-            a=output.index('<ALT>')
-            del output[a]
-            output.append('\t')
-        except:
-            pass
+    
+    print("Done!\n是否按照原始数据显示?(y/n)")
     flag = ''
     for data in output:
-        f2.write(data)
         flag += data
-    print("Data of keyboard pca is :\n", flag, end='')
-    f2.close()
-    exit(1)
+    if input('>') == 'y':
+        print("Data of keyboard pca is :\n", flag, end='')
+    else:
+        for i in tqdm(range(len(output))):
+            try:
+                a=output.index('<DEL>')
+                del output[a]
+                del output[a-1]
+            except:
+                pass
+            try:
+                a=output.index('<RET>')
+                del output[a]
+                output.append('\n')
+            except:
+                pass
+            try:
+                a=output.index('<SPACE>')
+                del output[a]
+                output.append(' ')
+            except:
+                pass
+            try:
+                a=output.index('<ALT>')
+                del output[a]
+                output.append('\t')
+            except:
+                pass
+            try:
+                a=output.index('<CAP>')
+                del output[a]
+            except:
+                pass
+        flag = ''
+        for data in output:
+            flag += data
+        print("Data of keyboard pca is :\n", flag, end='')
 
-# 鼠标流量分析
-def analyse_mouse(cmd) -> int:
-    if 'mouse' in sys.argv:
-        p = sys.argv.index('mouse')
-    elif 'm' in sys.argv:
-        p = sys.argv.index('m')
-    if len(sys.argv) < p + 2:
-        print('Missing file for mouse')
-        return 2
-    if len(sys.argv) == p + 2:
-        sys.argv.append('outmouse.txt')
-        print('Missing outputfile, it will named outmouse by default')
-    name = sys.argv[p + 2].split('.')[0]
-    keys = open(sys.argv[p+1],'r').readlines()
-    f = open(sys.argv[p+2],'w')
+#鼠标流量分析
+@click.command()
+@click.option('--inputfile','-i',nargs=1,type=str,help='目标data文件')
+@click.option('--outputfile','-o',default="outmouse.txt",nargs=1,type=str,help='输出文件')
+
+
+def mouse(inputfile,outputfile):
+    """Usage: python knm.py mouse -i input.data"""
+    keys = open(inputfile,'r').readlines()
+    f = open(outputfile,'w')
+    name = outputfile.split('.')[0]
     posx = 0
     posy = 0
     print('Taking Data...')
     for line in tqdm(keys):
-        if ':' not in line:
-            out = ''
-            for i in range(0, len(line)-1, 2):
-                if i + 2 != len(line):
-                    out += line[i] + line[i + 1] + ":"
-                else:
-                    out += line[i] + line[i + 1]
-        else:
-            out = line
-        if len(out) != 12:
-            continue
-        line = out[:12]
-        x = int(line[3:5], 16)
+        # if ':' not in line:
+        #     out = ''
+        #     for i in range(0, len(line)-1, 2):
+        #         if i + 2 != len(line):
+        #             out += line[i] + line[i + 1] + ":"
+        #         else:
+        #             out += line[i] + line[i + 1]
+        # else:
+        #     out = line
+        # if len(out) != 12:
+        #     continue
+        # line = out[:12]
+
+        #↑↑↑上述无效代码↑↑↑
+
+
+
+        #注：根据题目情况与偏移地址不同，酌情修改此处的值
+        #例如2020 DASCTF八月赛-misc-eeeeeeeasyusb需要把里面的值改为4:6,8:10
+        x = int(line[3:5], 16) 
         y = int(line[6:8], 16)
         if x > 127:
             x -= 256
@@ -261,13 +285,10 @@ def draw_mouse(filename="outmouse"):
     print('Done!')    
     plot.show()
 
+
+main.add_command(pca)
+main.add_command(addr)
+main.add_command(keyboard)
+main.add_command(mouse)
 if __name__ == '__main__':
-    error = start()
-    if error == 1:
-        print("Wrong cmd")
-    elif error == 2:
-        print('Missing input file')
-    elif error == 3:
-        print('Missing outputfile, it will named outpca by default')
-    elif error == 4:
-        print('Wrong input file')
+    main()
