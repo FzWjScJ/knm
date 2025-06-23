@@ -35,7 +35,7 @@
 ### 安装方法
 
 ```bash
-pip install -r requestment.txt
+pip install -r requirements.txt
 apt-get install tshark
 ```
 
